@@ -19,29 +19,26 @@
 
         #map {
             flex: 1;
+            min-width: 0;
         }
 
         #sidebar {
             height: 100vh;
-            /* Розтягуємо бічну панель зверху донизу */
             width: 300px;
             background: #f4f4f4;
             padding: 10px;
             overflow-y: auto;
             border-right: 1px solid #ccc;
             transition: transform 0.3s ease, width 0.3s ease;
-            /* Додаємо анімацію ширини */
             font-family: Tahoma, sans-serif;
+            z-index: 1001;
         }
 
         #sidebar.collapsed {
             transform: translateX(-100%);
             width: 0;
-            /* Повністю згортаємо ширину */
             padding: 0;
-            /* Прибираємо відступи при згортанні */
             border-right: none;
-            /* Прибираємо межу при згортанні */
         }
 
         #button-container {
@@ -90,7 +87,7 @@
         }
 
         .leaflet-popup-content-wrapper {
-            background: rgba(255, 255, 255, 0.2); /* White with 20% opacity */
+            background: rgba(255, 255, 255, 0.2);
             border: none;
             border-radius: 8px;
             padding: 0;
@@ -111,9 +108,8 @@
         }
 
         .info-box {
-            /* Стиль інфо бокса і текста у ньому*/
-            background: rgba(255, 255, 255, 0.2); /* White with 20% opacity */
-            border: 1px solid #000; /* Solid border with no transparency */
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid #000;
             border-radius: 8px;
             padding: 5px;
             cursor: move;
@@ -126,7 +122,7 @@
             z-index: 1000;
             font-family: Tahoma, sans-serif;
             font-weight: normal;
-            color: black; /* Ensure text remains fully opaque */
+            color: black;
         }
 
         .info-box-container {
@@ -145,7 +141,7 @@
         .default-settings h4 {
             margin: 0 0 10px 0;
             font-size: 14px;
-            text-align: center; /* Center horizontally */
+            text-align: center;
         }
 
         .setting-item {
@@ -179,7 +175,7 @@
 
         #sidebar h3 {
             font-size: 16px;
-            text-align: center; /* Center horizontally */
+            text-align: center;
         }
 
         #sidebar h4 {
@@ -209,7 +205,6 @@
             background-color: #45a049;
         }
 
-        /* Стилі для кнопок видалення */
         .delete-button,
         #delete-all {
             background-color: #f44336;
@@ -220,7 +215,6 @@
             background-color: #d32f2f;
         }
 
-        /* Покращення стилів для інпутів */
         input[type="text"],
         input[type="number"] {
             width: 100%;
@@ -239,7 +233,6 @@
             border-radius: 4px;
         }
 
-        /* Покращення стилів для станцій у списку */
         .station-item {
             margin-bottom: 15px;
             padding: 10px;
@@ -254,7 +247,6 @@
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
 
-        /* Заголовок для кожної станції */
         .station-header {
             display: flex;
             justify-content: space-between;
@@ -263,7 +255,6 @@
             font-weight: bold;
         }
 
-        /* Групування налаштувань */
         .settings-group {
             border: 1px solid #eee;
             border-radius: 4px;
@@ -278,35 +269,155 @@
             color: #555;
         }
 
-        /* Адаптивний дизайн */
-        @media (max-width: 768px) {
+        /* --- MOBILE OPTIMIZATION --- */
+        @media (max-width: 900px) {
+            #sidebar {
+                width: 220px;
+                min-width: 0;
+                font-size: 11px;
+                padding: 6px;
+            }
+            .default-settings,
+            .station-item {
+                font-size: 11px;
+                padding: 6px;
+            }
+            .info-box {
+                min-width: 120px;
+                max-width: 200px;
+                font-size: 11px;
+                padding: 4px;
+            }
+            #sidebar h3 {
+                font-size: 13px;
+            }
+            #sidebar h4 {
+                font-size: 12px;
+            }
+            .save-load-buttons button,
+            #button-container button {
+                font-size: 11px;
+                padding: 4px 7px;
+            }
+            input[type="text"],
+            input[type="number"] {
+                font-size: 11px;
+                padding: 4px 6px;
+            }
+            input[type="color"] {
+                height: 22px;
+            }
+        }
+
+        @media (max-width: 600px) {
             body {
                 flex-direction: column;
+                font-size: 11px;
             }
-
             #sidebar {
-                width: 100%;
-                height: 300px;
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100vw;
+                height: 60vh;
+                max-height: 70vw;
+                min-width: 0;
                 border-right: none;
                 border-bottom: 1px solid #ccc;
+                z-index: 1001;
+                background: #f4f4f4;
+                overflow-y: auto;
+                transition: transform 0.3s, height 0.3s, width 0.3s;
             }
-
             #sidebar.collapsed {
                 transform: translateY(-100%);
                 height: 0;
+                width: 100vw;
             }
-
+            #map {
+                min-height: 40vh;
+                min-width: 0;
+            }
             #button-container {
-                top: 10px;
-                left: 10px;
-                position: absolute;
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                width: 100vw;
+                justify-content: space-around;
+                gap: 5px;
+                padding: 4px 0;
+                background: rgba(255,255,255,0.85);
+                z-index: 1002;
+            }
+            #button-container button {
+                font-size: 13px;
+                padding: 7px 10px;
+                margin: 0 2px;
+            }
+            .save-load-buttons {
+                flex-direction: column;
+                gap: 6px;
+                margin-bottom: 10px;
+            }
+            .save-load-buttons button {
+                margin: 0;
+                font-size: 12px;
+                padding: 7px 10px;
+            }
+            .search-container {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                width: 100vw !important;
+                z-index: 1003 !important;
+                padding: 4px 2vw;
+                background: rgba(255,255,255,0.95);
+            }
+            #search-input {
+                font-size: 13px !important;
+                padding: 7px 8px !important;
+            }
+            #search-results {
+                font-size: 12px !important;
+                max-height: 40vh !important;
+            }
+            .info-box {
+                min-width: 100px;
+                max-width: 160px;
+                font-size: 10px;
+                padding: 3px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            #sidebar {
+                font-size: 10px;
+                padding: 2px;
+            }
+            .default-settings,
+            .station-item {
+                font-size: 10px;
+                padding: 2px;
+            }
+            .info-box {
+                min-width: 80px;
+                max-width: 120px;
+                font-size: 9px;
+                padding: 2px;
+            }
+            #button-container button,
+            .save-load-buttons button {
+                font-size: 10px;
+                padding: 4px 4px;
             }
         }
 
         /* Покращення стилів для інфобоксів */
         .info-box {
-            background: rgba(255, 255, 255, 0.6); /* White with 60% opacity */
-            border: 1px solid #000; /* Solid border with no transparency */
+            background: rgba(255, 255, 255, 0.6);
+            border: 1px solid #000;
             border-radius: 8px;
             padding: 8px;
             cursor: move;
@@ -314,21 +425,20 @@
             box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
             font-size: 12px;
             text-align: left;
-            color: black; /* Ensuring text is fully opaque */
+            color: black;
             min-width: 200px;
             max-width: 300px;
             z-index: 1000;
             font-family: Tahoma, sans-serif;
             font-weight: normal;
             transition: box-shadow 0.3s;
-            line-height: normal; /* Normal line height for better readability */
+            line-height: normal;
         }
 
         .info-box:hover {
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
         }
 
-        /* Стилі для кнопок збереження/завантаження */
         .save-load-buttons {
             display: flex;
             justify-content: space-between;
@@ -362,11 +472,31 @@
         #geocode-indicator {
             position: absolute;
             top: 50%;
-            left: calc(50% + 150px); /* Adjust for sidebar width */
+            left: calc(50% + 150px);
             transform: translate(-50%, -50%);
             z-index: 1000;
-            display: none; /* Hidden by default */
-            transition: left 0.3s ease; /* Smooth transition when sidebar toggles */
+            display: none;
+            transition: left 0.3s ease;
+        }
+
+        @media (max-width: 900px) {
+            #geocode-indicator {
+                left: 50%;
+            }
+        }
+        @media (max-width: 600px) {
+            #geocode-indicator {
+                left: 50vw !important;
+                top: 60vh !important;
+                width: 40px;
+                height: 40px;
+            }
+        }
+        @media (max-width: 400px) {
+            #geocode-indicator {
+                width: 30px;
+                height: 30px;
+            }
         }
 
         .spinner {
