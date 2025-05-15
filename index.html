@@ -8,6 +8,13 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrolling */
+        }
+
         body {
             margin: 0;
             padding: 0;
@@ -20,6 +27,7 @@
         #map {
             flex: 1;
             min-width: 0;
+            height: 100%; /* Ensure the map occupies full height */
         }
 
         #sidebar {
@@ -623,7 +631,7 @@
     <div id="sidebar">
         <h3>Редактор базових станцій</h3>
         <div class="default-settings">
-            <h4>Налаштування за замовчуванням</h4>
+            <h4>Глобальні налаштування</h4>
             <div class="setting-item">
                 <label>Розмір тексту (px):</label>
                 <input type="number" id="default-font-size" value="12" min="6" max="20">
@@ -631,6 +639,10 @@
             <div class="setting-item">
                 <label>Колір азимутів:</label>
                 <input type="color" id="default-color" value="#000000">
+            </div>
+            <div class="setting-item">
+                <label>Розмір маркера: <span id="default-marker-size-value">17</span> px</label>
+                <input type="range" id="default-marker-size" min="0" max="8" step="1" value="2" style="width:100%;">
             </div>
             <div class="setting-item">
                 <label>Радіус азимутів (м):</label>
@@ -1000,7 +1012,8 @@
             POPUP_DISTANCE: 250, // Відступ інфобокса по замовчуванню
             FONT_SIZE: 12,
             FONT_WEIGHT: 'normal',
-            FONT_STYLE: 'normal'
+            FONT_STYLE: 'normal',
+            MARKER_SIZE: 17 // px
         };
 
         // Кешуємо DOM елементи
@@ -1016,7 +1029,9 @@
             defaultRadius: document.getElementById('default-radius'),
             defaultWidth: document.getElementById('default-width'),
             defaultPopupDistance: document.getElementById('default-popup-distance'),
-            defaultGeocode: document.getElementById('default-geocode')
+            defaultGeocode: document.getElementById('default-geocode'),
+            defaultMarkerSize: document.getElementById('default-marker-size'),
+            defaultMarkerSizeValue: document.getElementById('default-marker-size-value')
         };
 
         const stations = [];
@@ -1063,11 +1078,16 @@
             div.style.fontWeight = DEFAULT_CONFIG.FONT_WEIGHT;
             div.style.fontStyle = DEFAULT_CONFIG.FONT_STYLE;
             div.style.borderColor = color;
-            div.style.opacity = '1'; // Set overall opacity to 100%
-            div.style.lineHeight = 'normal'; // Use normal line height
+            div.style.opacity = '1';
+            div.style.lineHeight = 'normal';
+            const addressHtml = (address || '').replace(/\r?\n/g, '<br>');
+            let azimuthHtml = '';
+            if (azimuth !== '' && azimuth !== undefined && azimuth !== null) {
+                azimuthHtml = `<div style="border-color: ${color};">Азимут: ${azimuth}°</div>`;
+            }
             div.innerHTML = `
-                <div style="border-color: ${color};">Адреса: ${address}</div>
-                <div style="border-color: ${color};">Азимут: ${azimuth}°</div>
+                <div style="border-color: ${color};">${addressHtml}</div>
+                ${azimuthHtml}
             `;
             return L.divIcon({
                 html: div,
@@ -1097,9 +1117,34 @@
             return marker;
         }
 
+        function createCustomIcon(color, size = DEFAULT_CONFIG.MARKER_SIZE) {
+            return L.divIcon({
+                className: 'custom-marker',
+                html: `
+                    <div style="
+                        width: ${size}px;
+                        height: ${size}px;
+                        background: ${color};
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border: 2px solid white;">
+                        <div style="
+                            width: ${Math.round(size/2)}px;
+                            height: ${Math.round(size/2)}px;
+                            background: white;
+                            border-radius: 50%;"></div>
+                    </div>
+                `,
+                iconSize: [size, size],
+                iconAnchor: [Math.round(size/2), Math.round(size/2)]
+            });
+        }
+
         function addStation(lat, lng, azimuth = 0, radius = DEFAULT_CONFIG.RADIUS,
             width = DEFAULT_CONFIG.AZIMUTH_WIDTH, color = DEFAULT_CONFIG.COLOR,
-            address = '', icon = 'default') {
+            address = '', icon = 'default', markerSize = DEFAULT_CONFIG.MARKER_SIZE) {
             const station = {
                 lat,
                 lng,
@@ -1115,33 +1160,11 @@
                 popupMarker: null,
                 popupLat: null,
                 popupLng: null,
+                markerSize: markerSize || DEFAULT_CONFIG.MARKER_SIZE
             };
 
             // Додаємо маркер
-            const createCustomIcon = (color) => L.divIcon({
-                className: 'custom-marker',
-                html: `
-                    <div style="
-                        width: 14px; /* Зменшено на 30% від 20px */
-                        height: 14px; /* Зменшено на 30% від 20px */
-                        background: ${color};
-                        border-radius: 50%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        border: 2px solid white;">
-                        <div style="
-                            width: 6px; /* Виправлено розмір для центрування */
-                            height: 6px; /* Виправлено розмір для центрування */
-                            background: white;
-                            border-radius: 50%;"></div>
-                    </div>
-                `,
-                iconSize: [14, 14], /* Зменшено на 30% від [20, 20] */
-                iconAnchor: [7, 7] /* Зменшено на 30% від [10, 10] */
-            });
-
-            station.marker = L.marker([lat, lng], { draggable: true, icon: createCustomIcon(color) }).addTo(map);
+            station.marker = L.marker([lat, lng], { draggable: true, icon: createCustomIcon(color, station.markerSize) }).addTo(map);
             setupStationDragging(station);
 
             // Додаємо полігон
@@ -1152,12 +1175,17 @@
             const popupPos = calculatePopupPosition(lat, lng, azimuth);
             station.popupLat = popupPos.lat;
             station.popupLng = popupPos.lng;
-            station.popup = createPopup(address, azimuth, color);
+            station.popup = createPopup(`Адреса: ${address}`, azimuth, color);
             station.popupMarker = setupPopupDragging(station.popup, station);
 
             stations.push(station);
             updateStationList();
-            updatePopupStyle(station);
+
+            // Update the textarea in the settings with the address
+            const textarea = DOM.stationList.querySelector(`.address-input[data-index="${stations.length - 1}"]`);
+            if (textarea) {
+                textarea.value = `Адреса: ${address}`;
+            }
         }
 
         // Function to set up dragging for the station marker and polygon without triggering geocoding
@@ -1230,8 +1258,7 @@
             const item = document.createElement('div');
             item.className = 'station-item';
             item.innerHTML = `
-                <label>Адреса:</label>
-                <input type="text" value="${station.address}" data-index="${index}" class="address-input" />
+                <textarea data-index="${index}" class="address-input" style="width:100%;min-height:36px;resize:vertical;">Адреса: ${station.address || ''}</textarea>
                 <label>Радіус (м):</label>
                 <input type="number" value="${station.radius}" data-index="${index}" class="radius-input" />
                 <label>Азимут (0-360°):</label>
@@ -1240,6 +1267,8 @@
                 <input type="number" value="${station.width}" data-index="${index}" class="width-input" />
                 <label>Колір:</label>
                 <input type="color" value="${station.color}" data-index="${index}" class="color-input" />
+                <label>Розмір маркера: <span class="marker-size-value">${station.markerSize || DEFAULT_CONFIG.MARKER_SIZE}</span> px</label>
+                <input type="range" min="0" max="8" step="1" value="${getMarkerSizeIndex(station.markerSize || DEFAULT_CONFIG.MARKER_SIZE)}" data-index="${index}" class="marker-size-input" style="width:100%;">
                 <button data-index="${index}" class="delete-button">Видалити</button>
             `;
             return item;
@@ -1262,11 +1291,20 @@
             const station = stations[index];
             switch (e.target.className) {
                 case 'address-input':
-                    station.address = e.target.value;
-                    station.popup = createPopup(e.target.value, station.azimuth, station.color);
+                    const addressValue = e.target.value;
+                    station.address = addressValue;
+                    // Update the popup with the updated address
+                    station.popup = createPopup(addressValue, station.azimuth, station.color);
                     station.popupMarker.setIcon(station.popup);
                     break;
                 case 'azimuth-input':
+                    if (e.target.value === '') {
+                        // Дозволяємо порожнє значення без попередження
+                        station.azimuth = '';
+                        station.popup = createPopup(station.address, '', station.color);
+                        station.popupMarker.setIcon(station.popup);
+                        break;
+                    }
                     const azimuthValue = parseFloat(e.target.value);
                     if (isNaN(azimuthValue) || azimuthValue < 0 || azimuthValue > 360) {
                         // Reset to previous valid value
@@ -1284,44 +1322,70 @@
                     updateStationPolygon(station);
                     break;
                 case 'width-input':
+                    if (e.target.value === '') {
+                        // Дозволяємо порожнє значення без попередження і ховаємо полігон
+                        station.width = '';
+                        if (station.polygon) {
+                            map.removeLayer(station.polygon);
+                            station.polygon = null;
+                        }
+                        // Додаємо: оновлення кольору маркера навіть якщо полігон прихований
+                        const newIcon = L.divIcon({
+                            className: 'custom-marker',
+                            html: `
+                                <div style="
+                                    width: 14px;
+                                    height: 14px;
+                                    background: ${station.color};
+                                    border-radius: 50%;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    border: 2px solid white;">
+                                    <div style="
+                                        width: 6px;
+                                        height: 6px;
+                                        background: white;
+                                        border-radius: 50%;"></div>
+                                </div>
+                            `,
+                            iconSize: [14, 14],
+                            iconAnchor: [7, 7]
+                        });
+                        station.marker.setIcon(newIcon);
+                        break;
+                    }
                     const widthValue = parseFloat(e.target.value);
-                    if (isNaN(widthValue) || widthValue < 0 || widthValue > 360) {0
+                    if (isNaN(widthValue) || widthValue < 0 || widthValue > 360) {
                         // Reset to previous valid value
                         e.target.value = station.width;
                         alert('Ширина азимуту має бути в діапазоні від 0 до 360 градусів.');
                     } else {
                         station.width = widthValue;
-                        updateStationPolygon(station);
+                        // Якщо полігон був прихований, створити його знову
+                        if (!station.polygon) {
+                            station.polygon = createAzimuthPolygon(
+                                station.lat,
+                                station.lng,
+                                station.azimuth === '' ? 0 : station.azimuth,
+                                station.radius,
+                                station.width,
+                                station.color
+                            );
+                            station.polygon.addTo(map);
+                        } else {
+                            updateStationPolygon(station);
+                        }
                     }
                     break;
                 case 'color-input':
                     station.color = e.target.value;
-                    updateStationPolygon(station);
-
-                    // Update marker color
-                    const newIcon = L.divIcon({
-                        className: 'custom-marker',
-                        html: `
-                            <div style="
-                                width: 14px; /* Зменшено на 30% від 20px */
-                                height: 14px; /* Зменшено на 30% від 20px */
-                                background: ${station.color};
-                                border-radius: 50%;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                border: 2px solid white;">
-                                <div style="
-                                    width: 6px; /* Виправлено розмір для центрування */
-                                    height: 6px; /* Виправлено розмір для центрування */
-                                    background: white;
-                                    border-radius: 50%;"></div>
-                            </div>
-                        `,
-                        iconSize: [14, 14], /* Зменшено на 30% від [20, 20] */
-                        iconAnchor: [7, 7] /* Зменшено на 30% від [10, 10] */
-                    });
-                    station.marker.setIcon(newIcon);
+                    // Оновлюємо полігон, якщо він є
+                    if (station.polygon) {
+                        updateStationPolygon(station);
+                    }
+                    // Оновлюємо маркер завжди
+                    station.marker.setIcon(createCustomIcon(station.color, station.markerSize || DEFAULT_CONFIG.MARKER_SIZE));
 
                     // Update popup border color
                     const popupElement = station.popupMarker.getElement();
@@ -1331,6 +1395,13 @@
                             infoBox.style.borderColor = station.color;
                         }
                     }
+                    break;
+                case 'marker-size-input':
+                    let idx = parseInt(e.target.value);
+                    let val = getMarkerSizeByIndex(idx);
+                    station.markerSize = val;
+                    station.marker.setIcon(createCustomIcon(station.color, station.markerSize));
+                    e.target.parentElement.querySelector('.marker-size-value').textContent = station.markerSize;
                     break;
             }
         });
@@ -1386,7 +1457,19 @@
 
             // Add station with obtained address
             const defaultAzimuth = 0; // Valid default value in range 0-360
-            addStation(lat, lng, defaultAzimuth, DEFAULT_CONFIG.RADIUS, DEFAULT_CONFIG.AZIMUTH_WIDTH, DEFAULT_CONFIG.COLOR, address);
+            const stationIndex = stations.length; // Index for the new station
+            addStation(lat, lng, defaultAzimuth, DEFAULT_CONFIG.RADIUS, DEFAULT_CONFIG.AZIMUTH_WIDTH, DEFAULT_CONFIG.COLOR, `Адреса: ${address}`);
+
+            // Update the textarea in the settings with the geocoded address
+            const textarea = DOM.stationList.querySelector(`.address-input[data-index="${stationIndex}"]`);
+            if (textarea) {
+                textarea.value = `Адреса: ${address}`;
+                // Update the popup on the map with the same address
+                const station = stations[stationIndex];
+                station.address = `Адреса: ${address}`;
+                station.popup = createPopup(station.address, station.azimuth, station.color);
+                station.popupMarker.setIcon(station.popup);
+            }
         });
 
         map.on('zoomend', () => {
@@ -1448,31 +1531,8 @@
             stations.forEach(station => {
                 station.color = DEFAULT_CONFIG.COLOR;
                 updateStationPolygon(station);
-                // Update marker color
-                const newIcon = L.divIcon({
-                    className: 'custom-marker',
-                    html: `
-                        <div style="
-                            width: 14px; /* Зменшено на 30% від 20px */
-                            height: 14px; /* Зменшено на 30% від 20px */
-                            background: ${DEFAULT_CONFIG.COLOR};
-                            border-radius: 50%;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            border: 2px solid white;">
-                            <div style="
-                                width: 6px; /* Виправлено розмір для центрування */
-                                height: 6px; /* Виправлено розмір для центрування */
-                                background: white;
-                                border-radius: 50%;"></div>
-                        </div>
-                    `,
-                    iconSize: [14, 14], /* Зменшено на 30% від [20, 20] */
-                    iconAnchor: [7, 7] /* Зменшено на 30% від [10, 10] */
-                });
-                station.marker.setIcon(newIcon);
-
+                // Update marker color without changing its size
+                station.marker.setIcon(createCustomIcon(station.color, station.markerSize));
                 // Update popup border color
                 const popupElement = station.popupMarker.getElement();
                 if (popupElement) {
@@ -1483,7 +1543,7 @@
                 }
             });
 
-            // Оновлення кольору прямокутника вибору кольору в налаштуваннях базових станцій
+            // Update color input in station settings
             document.querySelectorAll('.color-input').forEach(input => {
                 input.value = DEFAULT_CONFIG.COLOR;
             });
@@ -1501,17 +1561,71 @@
 
         DOM.defaultWidth.addEventListener('change', (e) => {
             e.stopPropagation(); // Prevent event bubbling to map
-            
-            const newWidth = parseInt(e.target.value);
-            if (isNaN(newWidth) || newWidth < 0 || newWidth > 360) {
-                // Reset to previous valid value
+
+            const newWidth = e.target.value === '' ? '' : parseInt(e.target.value);
+            if (newWidth === '') {
+                DEFAULT_CONFIG.AZIMUTH_WIDTH = '';
+                stations.forEach(station => {
+                    station.width = '';
+                    if (station.polygon) {
+                        map.removeLayer(station.polygon);
+                        station.polygon = null;
+                    }
+                });
+            } else if (isNaN(newWidth) || newWidth < 0 || newWidth > 360) {
                 e.target.value = DEFAULT_CONFIG.AZIMUTH_WIDTH;
                 alert('Ширина азимуту має бути в діапазоні від 0 до 360 градусів.');
             } else {
                 DEFAULT_CONFIG.AZIMUTH_WIDTH = newWidth;
                 stations.forEach(station => {
                     station.width = DEFAULT_CONFIG.AZIMUTH_WIDTH;
-                    updateStationPolygon(station);
+                    if (!station.polygon) {
+                        station.polygon = createAzimuthPolygon(
+                            station.lat,
+                            station.lng,
+                            station.azimuth === '' ? 0 : station.azimuth,
+                            station.radius,
+                            station.width,
+                            station.color
+                        );
+                        station.polygon.addTo(map);
+                    } else {
+                        updateStationPolygon(station);
+                    }
+                });
+            }
+        });
+
+        DOM.defaultWidth.addEventListener('input', (e) => {
+            e.stopPropagation(); // Prevent event bubbling to map
+
+            const newWidth = e.target.value === '' ? '' : parseInt(e.target.value);
+            if (newWidth === '') {
+                DEFAULT_CONFIG.AZIMUTH_WIDTH = '';
+                stations.forEach(station => {
+                    station.width = '';
+                    if (station.polygon) {
+                        map.removeLayer(station.polygon);
+                        station.polygon = null;
+                    }
+                });
+            } else if (!isNaN(newWidth) && newWidth >= 0 && newWidth <= 360) {
+                DEFAULT_CONFIG.AZIMUTH_WIDTH = newWidth;
+                stations.forEach(station => {
+                    station.width = DEFAULT_CONFIG.AZIMUTH_WIDTH;
+                    if (!station.polygon) {
+                        station.polygon = createAzimuthPolygon(
+                            station.lat,
+                            station.lng,
+                            station.azimuth === '' ? 0 : station.azimuth,
+                            station.radius,
+                            station.width,
+                            station.color
+                        );
+                        station.polygon.addTo(map);
+                    } else {
+                        updateStationPolygon(station);
+                    }
                 });
             }
         });
@@ -1578,6 +1692,93 @@
         // Prevent map click when interacting with sidebar
         document.getElementById('sidebar').addEventListener('click', (e) => {
             e.stopPropagation();
+        });
+
+        DOM.defaultMarkerSize.addEventListener('input', (e) => {
+            e.stopPropagation();
+            let idx = parseInt(e.target.value);
+            let size = getMarkerSizeByIndex(idx);
+            DEFAULT_CONFIG.MARKER_SIZE = size;
+            DOM.defaultMarkerSizeValue.textContent = size;
+            stations.forEach((station, i) => {
+                station.markerSize = size;
+                station.marker.setIcon(createCustomIcon(station.color, size));
+                // Оновити значення повзунка у списку станцій
+                const item = DOM.stationList.querySelector(`.marker-size-input[data-index="${i}"]`);
+                const valueSpan = DOM.stationList.querySelector(`.marker-size-value[data-index="${i}"]`) || DOM.stationList.querySelector('.marker-size-value');
+                if (item) item.value = idx;
+                if (valueSpan) valueSpan.textContent = size;
+            });
+        });
+
+        // --- Marker size pattern ---
+        const MARKER_SIZE_PATTERN = [8, 9, 12, 16, 17, 20, 21, 24, 25];
+
+        function getMarkerSizeIndex(size) {
+            // Find closest index in pattern
+            let idx = MARKER_SIZE_PATTERN.indexOf(size);
+            if (idx === -1) {
+                // fallback to nearest
+                let minDiff = Infinity, minIdx = 0;
+                for (let i = 0; i < MARKER_SIZE_PATTERN.length; i++) {
+                    let diff = Math.abs(MARKER_SIZE_PATTERN[i] - size);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        minIdx = i;
+                    }
+                }
+                return minIdx;
+            }
+            return idx;
+        }
+
+        function getMarkerSizeByIndex(idx) {
+            return MARKER_SIZE_PATTERN[idx] || MARKER_SIZE_PATTERN[0];
+        }
+
+        // При ініціалізації DOM.defaultMarkerSize.value має відповідати індексу паттерну для початкового розміру
+        document.addEventListener('DOMContentLoaded', function () {
+            // ...existing code...
+            DOM.defaultMarkerSize.value = getMarkerSizeIndex(DEFAULT_CONFIG.MARKER_SIZE);
+            DOM.defaultMarkerSizeValue.textContent = DEFAULT_CONFIG.MARKER_SIZE;
+            // ...existing code...
+        });
+
+        DOM.defaultFontSize.addEventListener('input', (e) => {
+            e.stopPropagation(); // Prevent event bubbling to map
+
+            DEFAULT_CONFIG.FONT_SIZE = parseInt(e.target.value);
+            stations.forEach(station => {
+                const popupElement = station.popupMarker.getElement();
+                if (popupElement) {
+                    const infoBox = popupElement.querySelector('.info-box');
+                    if (infoBox) {
+                        infoBox.style.fontSize = `${DEFAULT_CONFIG.FONT_SIZE}px`;
+                    }
+                }
+            });
+        });
+
+        DOM.defaultRadius.addEventListener('input', (e) => {
+            e.stopPropagation(); // Prevent event bubbling to map
+
+            DEFAULT_CONFIG.RADIUS = parseInt(e.target.value);
+            stations.forEach(station => {
+                station.radius = DEFAULT_CONFIG.RADIUS;
+                updateStationPolygon(station);
+            });
+        });
+
+        DOM.defaultPopupDistance.addEventListener('input', (e) => {
+            e.stopPropagation(); // Prevent event bubbling to map
+
+            DEFAULT_CONFIG.POPUP_DISTANCE = parseInt(e.target.value);
+            stations.forEach(station => {
+                const popupPos = calculatePopupPosition(station.lat, station.lng, station.azimuth);
+                station.popupLat = popupPos.lat;
+                station.popupLng = popupPos.lng;
+                station.popupMarker.setLatLng([station.popupLat, station.popupLng]);
+            });
         });
     </script>
 </body>
