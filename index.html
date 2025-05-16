@@ -649,11 +649,11 @@
                 <input type="number" id="default-radius" value="700" min="100" max="90000" step="50">
             </div>
             <div class="setting-item">
-                <label>Ширина азимутів (°):</label>
+                <label>Ширина азимутів:</label>
                 <input type="number" id="default-width" value="120" min="30" max="360" step="5">
             </div>
             <div class="setting-item">
-                <label>Відступ інфобокса (м):</label>
+                <label>Відступ інфобокса:</label>
                 <input type="number" id="default-popup-distance" value="250" min="50" max="500" step="10">
             </div>
             <div class="setting-item">
@@ -1075,25 +1075,44 @@
             const div = document.createElement('div');
             div.className = 'info-box';
             div.style.fontSize = `${DEFAULT_CONFIG.FONT_SIZE}px`;
-            div.style.fontWeight = DEFAULT_CONFIG.FONT_WEIGHT;
-            div.style.fontStyle = DEFAULT_CONFIG.FONT_STYLE;
+            div.style.fontWeight = `${DEFAULT_CONFIG.FONT_WEIGHT}`;
+            div.style.fontStyle = `${DEFAULT_CONFIG.FONT_STYLE}`;
             div.style.borderColor = color;
             div.style.opacity = '1';
             div.style.lineHeight = 'normal';
+            div.style.minWidth = '100px'; // Встановлюємо мінімальну ширину
+            div.style.maxWidth = '250px'; // Встановлюємо максимальну ширину
+            div.style.textAlign = 'left'; // Вирівнюємо текст по лівому краю
+
             const addressHtml = (address || '').replace(/\r?\n/g, '<br>');
             let azimuthHtml = '';
             if (azimuth !== '' && azimuth !== undefined && azimuth !== null) {
-                azimuthHtml = `<div style="border-color: ${color};">Азимут: ${azimuth}°</div>`;
+                azimuthHtml = `<div style="border-color: ${color};">Азимут: ${azimuth}</div>`;
             }
             div.innerHTML = `
                 <div style="border-color: ${color};">${addressHtml}</div>
                 ${azimuthHtml}
             `;
+
+            // Динамічно регулюємо ширину залежно від вмісту
+            const tempDiv = document.createElement('div');
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.visibility = 'hidden';
+            tempDiv.style.whiteSpace = 'nowrap';
+            tempDiv.style.fontSize = `${DEFAULT_CONFIG.FONT_SIZE}px`;
+            tempDiv.style.fontWeight = `${DEFAULT_CONFIG.FONT_WEIGHT}`;
+            tempDiv.style.fontStyle = `${DEFAULT_CONFIG.FONT_STYLE}`;
+            tempDiv.innerHTML = addressHtml;
+            document.body.appendChild(tempDiv);
+            const calculatedWidth = Math.min(Math.max(tempDiv.offsetWidth + 20, 150), 500); // Додаємо відступи та обмежуємо
+            div.style.width = `${calculatedWidth}px`;
+            document.body.removeChild(tempDiv);
+
             return L.divIcon({
                 html: div,
                 className: 'info-box-container',
-                iconSize: [200, 50],
-                iconAnchor: [100, 25]
+                iconSize: null, // Дозволяємо динамічний розмір
+                iconAnchor: [calculatedWidth / 2, 0] // Вирівнюємо по центру базової станції
             });
         }
 
@@ -1152,7 +1171,7 @@
                 radius,
                 width,
                 color: color || DEFAULT_CONFIG.COLOR,
-                address,
+                address: address,
                 icon,
                 marker: null,
                 polygon: null,
@@ -1175,7 +1194,7 @@
             const popupPos = calculatePopupPosition(lat, lng, azimuth);
             station.popupLat = popupPos.lat;
             station.popupLng = popupPos.lng;
-            station.popup = createPopup(`Адреса: ${address}`, azimuth, color);
+            station.popup = createPopup(address, azimuth, color);
             station.popupMarker = setupPopupDragging(station.popup, station);
 
             stations.push(station);
@@ -1184,7 +1203,7 @@
             // Update the textarea in the settings with the address
             const textarea = DOM.stationList.querySelector(`.address-input[data-index="${stations.length - 1}"]`);
             if (textarea) {
-                textarea.value = `Адреса: ${address}`;
+                textarea.value = station.address;
             }
         }
 
@@ -1258,12 +1277,12 @@
             const item = document.createElement('div');
             item.className = 'station-item';
             item.innerHTML = `
-                <textarea data-index="${index}" class="address-input" style="width:100%;min-height:36px;resize:vertical;">Адреса: ${station.address || ''}</textarea>
+                <textarea data-index="${index}" class="address-input" style="width:100%;min-height:36px;resize:vertical;">${station.address || ''}</textarea>
                 <label>Радіус (м):</label>
                 <input type="number" value="${station.radius}" data-index="${index}" class="radius-input" />
-                <label>Азимут (0-360°):</label>
+                <label>Азимут (0-360):</label>
                 <input type="number" min="0" max="360" value="${station.azimuth}" data-index="${index}" class="azimuth-input" />
-                <label>Ширина (0-360°):</label>
+                <label>Ширина (0-360):</label>
                 <input type="number" value="${station.width}" data-index="${index}" class="width-input" />
                 <label>Колір:</label>
                 <input type="color" value="${station.color}" data-index="${index}" class="color-input" />
@@ -1285,7 +1304,7 @@
 
         // Обробники подій
         document.getElementById('station-list').addEventListener('input', (e) => {
-            e.stopPropagation(); // Prevent event bubbling to map
+            e.stopPropagation(); // Запобігання спливанню події
             
             const index = e.target.dataset.index;
             const station = stations[index];
@@ -1293,9 +1312,31 @@
                 case 'address-input':
                     const addressValue = e.target.value;
                     station.address = addressValue;
-                    // Update the popup with the updated address
+                    // Оновлюємо інфобокс з оновленим текстом
                     station.popup = createPopup(addressValue, station.azimuth, station.color);
                     station.popupMarker.setIcon(station.popup);
+
+                    // Динамічно вирівнюємо інфобокс по центру
+                    const popupEl = station.popupMarker.getElement();
+                    if (popupEl) {
+                        const infoBox = popupEl.querySelector('.info-box');
+                        if (infoBox) {
+                            const tempDiv = document.createElement('div');
+                            tempDiv.style.position = 'absolute';
+                            tempDiv.style.visibility = 'hidden';
+                            tempDiv.style.whiteSpace = 'nowrap';
+                            tempDiv.style.fontSize = `${DEFAULT_CONFIG.FONT_SIZE}px`;
+                            tempDiv.style.fontWeight = `${DEFAULT_CONFIG.FONT_WEIGHT}`;
+                            tempDiv.style.fontStyle = `${DEFAULT_CONFIG.FONT_STYLE}`;
+                            tempDiv.innerHTML = addressValue.replace(/\r?\n/g, '<br>');
+                            document.body.appendChild(tempDiv);
+                            const calculatedWidth = Math.min(Math.max(tempDiv.offsetWidth + 20, 150), 500);
+                            infoBox.style.width = `${calculatedWidth}px`;
+                            station.popupMarker.options.icon.options.iconAnchor = [calculatedWidth / 2, 0];
+                            station.popupMarker.setIcon(station.popup); // Оновлюємо позицію
+                            document.body.removeChild(tempDiv);
+                        }
+                    }
                     break;
                 case 'azimuth-input':
                     if (e.target.value === '') {
@@ -1458,15 +1499,15 @@
             // Add station with obtained address
             const defaultAzimuth = 0; // Valid default value in range 0-360
             const stationIndex = stations.length; // Index for the new station
-            addStation(lat, lng, defaultAzimuth, DEFAULT_CONFIG.RADIUS, DEFAULT_CONFIG.AZIMUTH_WIDTH, DEFAULT_CONFIG.COLOR, `Адреса: ${address}`);
+            addStation(lat, lng, defaultAzimuth, DEFAULT_CONFIG.RADIUS, DEFAULT_CONFIG.AZIMUTH_WIDTH, DEFAULT_CONFIG.COLOR, address);
 
             // Update the textarea in the settings with the geocoded address
             const textarea = DOM.stationList.querySelector(`.address-input[data-index="${stationIndex}"]`);
             if (textarea) {
-                textarea.value = `Адреса: ${address}`;
+                textarea.value = address;
                 // Update the popup on the map with the same address
                 const station = stations[stationIndex];
-                station.address = `Адреса: ${address}`;
+                station.address = address;
                 station.popup = createPopup(station.address, station.azimuth, station.color);
                 station.popupMarker.setIcon(station.popup);
             }
