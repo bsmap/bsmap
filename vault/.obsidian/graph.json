@@ -1,0 +1,11 @@
+{
+  "colorGroups": [
+    { "query": "path:Модулі", "color": { "a": 1, "rgb": 3377407 } },
+    { "query": "path:Функції", "color": { "a": 1, "rgb": 5025616 } },
+    { "query": "path:Рішення", "color": { "a": 1, "rgb": 16750848 } },
+    { "query": "path:Дані", "color": { "a": 1, "rgb": 10233776 } },
+    { "query": "path:Розробка", "color": { "a": 1, "rgb": 9807270 } }
+  ],
+  "showTags": false,
+  "showAttachments": false
+}
