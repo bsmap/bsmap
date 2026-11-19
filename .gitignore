@@ -1,0 +1,9 @@
+*.zip
+*.bak
+*~
+.DS_Store
+
+# Obsidian: локальний стан інтерфейсу
+vault/.obsidian/workspace*.json
+vault/.obsidian/cache
+vault/.trash/
